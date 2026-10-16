@@ -1,0 +1,107 @@
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------------
+   TimeLedger design tokens — "ledger book": warm paper, ink, ledger green,
+   a brass accent for highlights and a vermilion stamp for problems.
+   ------------------------------------------------------------------------- */
+@theme {
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --color-paper: #f3efe6;
+  --color-paper-2: #ebe5d8;
+  --color-card: #fbf9f4;
+  --color-ink: #1b1a17;
+  --color-ink-2: #4a463e;
+  --color-ink-3: #8a8478;
+  --color-rule: #ddd5c4;
+  --color-rule-2: #c9bfab;
+
+  --color-ledger: #1f4d3a;
+  --color-ledger-2: #2b6a50;
+  --color-ledger-soft: #dde8df;
+  --color-cover: #14251c;
+  --color-cover-2: #1c3327;
+
+  --color-brass: #b9822a;
+  --color-brass-soft: #f3e4c4;
+  --color-stamp: #b4441f;
+  --color-stamp-soft: #f5e1d7;
+
+  --shadow-sheet: 0 1px 0 rgb(27 26 23 / 0.04), 0 8px 24px -12px rgb(27 26 23 / 0.18);
+  --shadow-pop: 0 18px 48px -16px rgb(20 37 28 / 0.35);
+
+  --animate-rise: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-fade: fade 0.25s ease-out both;
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-paper font-sans text-ink;
+    font-size: 15px;
+    line-height: 1.5;
+    /* Fine paper grain */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .07 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  ::selection { background: var(--color-brass-soft); }
+  :focus-visible {
+    outline: 2px solid var(--color-ledger-2);
+    outline-offset: 2px;
+  }
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+}
+
+@layer components {
+  .sheet {
+    @apply rounded-xl border border-rule bg-card;
+    box-shadow: var(--shadow-sheet);
+  }
+  /* Faint ruled lines, like a ledger page */
+  .ruled {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 43px,
+      color-mix(in srgb, var(--color-rule) 60%, transparent) 43px,
+      color-mix(in srgb, var(--color-rule) 60%, transparent) 44px
+    );
+  }
+  .eyebrow {
+    @apply font-mono text-[11px] font-medium tracking-[0.14em] text-ink-3 uppercase;
+  }
+  .input {
+    @apply w-full rounded-lg border border-rule-2 bg-white/70 px-3 py-2 text-[15px] text-ink transition outline-none placeholder:text-ink-3;
+  }
+  .input:focus {
+    @apply border-ledger-2 bg-white;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-ledger-2) 18%, transparent);
+  }
+  .input[aria-invalid='true'] { @apply border-stamp; }
+  .input:disabled { @apply cursor-not-allowed opacity-60; }
+
+  .table-ledger { @apply w-full text-left text-sm; }
+  .table-ledger thead th {
+    @apply border-b border-rule-2 px-4 py-2.5 font-mono text-[11px] font-medium tracking-[0.12em] text-ink-3 uppercase;
+  }
+  .table-ledger tbody td { @apply border-b border-rule/70 px-4 py-3 align-middle; }
+  .table-ledger tbody tr:last-child td { @apply border-b-0; }
+  .table-ledger tbody tr { @apply transition-colors hover:bg-paper/60; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
