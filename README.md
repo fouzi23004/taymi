@@ -37,19 +37,19 @@ Security is enforced in the database, not only in the UI:
 
 ---
 
-## Local development
+## Running the app on your computer
 
-Requirements: Node 20+ and Docker Desktop (for the local Supabase stack).
+Requirements: Node 20+ and a Supabase project (see [Deploying to production](#deploying-to-production) for the one-time setup).
 
 ```bash
 npm install
-npm run db:start          # starts Postgres, Auth, Edge Functions… applies migrations + seed (clients, tasks)
-cp .env.example .env      # then paste the API URL and anon key printed by db:start
-npm run db:seed-dev       # optional: test accounts + ~6 weeks of sample entries
+cp .env.example .env      # then paste your project URL and publishable key
 npm run dev               # http://localhost:5173
 ```
 
-The test accounts (one admin, one manager, three collaborators) are listed in [`scripts/dev-users.json`](scripts/dev-users.json). Their passwords are generated on the first run and saved to `scripts/dev-credentials.json`, which is gitignored. Supabase Studio runs at http://127.0.0.1:54323.
+### Optional: a local Supabase copy for testing
+
+This needs Docker Desktop. `npm run db:start` runs a throwaway Supabase in containers, with the migrations and demo clients/tasks. To use it, point `.env` at the URL and anon key it prints. `npm run db:seed-dev` then adds test accounts (listed in [`scripts/dev-users.json`](scripts/dev-users.json), passwords generated into the gitignored `scripts/dev-credentials.json`) and about 6 weeks of sample entries. `npm run db:stop` shuts it down.
 
 | Script | |
 | --- | --- |
@@ -73,7 +73,7 @@ The test accounts (one admin, one manager, three collaborators) are listed in [`
    `supabase/seed.sql` contains demo clients and tasks and is **not** applied by `db push`. Create your real clients and tasks in the app.
 3. In the Supabase dashboard, open **Authentication → Sign In / Providers**: turn off **Allow new users to sign up**, but keep the Email provider enabled. As a safety net, any account that isn't created by an admin gets an inactive profile with no access (except the very first account; see step 4).
 4. Create the **first admin**: **Authentication → Users → Add user** (email + password, auto-confirm). The first account on the instance automatically becomes admin. Everyone else is then added from the app (**Équipe → Ajouter un collaborateur**).
-   To run the dev server against the online project, put the URL and publishable key in `.env.local`. It overrides `.env` and is gitignored. Delete it to go back to local Supabase.
+   For `npm run dev`, put the same two values in `.env` (gitignored).
 5. Build the frontend with the project's URL and anon (publishable) key from **Project Settings → API**:
    ```bash
    VITE_SUPABASE_URL=https://<ref>.supabase.co VITE_SUPABASE_ANON_KEY=<anon-key> npm run build
