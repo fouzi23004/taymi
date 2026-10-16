@@ -80,6 +80,16 @@ The test accounts (one admin, one manager, three collaborators) are listed in [`
    ```
    Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages…). Configure the host to serve `index.html` for unknown paths (SPA fallback), and add the site URL under **Authentication → URL Configuration**.
 
+### GitHub Pages (included)
+
+`.github/workflows/deploy.yml` tests, builds and publishes the site on every push to `main`, at `https://<user>.github.io/<repo>/`. One-time setup in the GitHub repository:
+
+1. **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+2. **Settings → Secrets and variables → Actions → Variables → New repository variable**, twice:
+   - `VITE_SUPABASE_URL`: `https://<project-ref>.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY`: the **publishable** key. Never use the secret key; the workflow refuses it.
+3. Re-run the workflow from the **Actions** tab, or push a commit.
+
 ## Project structure
 
 ```
