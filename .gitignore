@@ -21,3 +21,6 @@ scripts/dev-credentials.json
 
 # Serena / editor tooling
 .serena/
+
+# Claude Code machine-local settings
+.claude/settings.local.json

@@ -96,7 +96,8 @@ This needs Docker Desktop. `npm run db:start` runs a throwaway Supabase in conta
 
 ```
 supabase/
-  migrations/…_init.sql     schema, RLS policies, triggers, report_rollup()
+  migrations/               schema, RLS policies, triggers, report_rollup(),
+                            then categories/exercises (…_categories_exercises.sql)
   functions/admin-users/    account management (service role)
   seed.sql                  demo clients & tasks (local only)
 scripts/                    local seeding and security checks
@@ -108,7 +109,7 @@ src/
     timesheet/              daily entry ("Ma journée")
     dashboard/              manager overview
     reports/                reports + pure roll-up/performance logic (unit tested)
-    admin/                  team, clients, tasks
+    admin/                  team, clients, categories, tasks, exercises
     account/ auth/ misc/
   i18n/                     fr.ts (source of truth), en.ts
   lib/                      supabase client, dates, durations, CSV, errors, types
