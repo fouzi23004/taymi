@@ -9,7 +9,6 @@ import { Avatar, Badge, PageHeader } from '@/components/ui/misc'
 import { LANGUAGES } from '@/i18n'
 import { errorKey } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
-import { formatHM } from '@/lib/time'
 
 export function AccountPage() {
   const { t, i18n } = useTranslation()
@@ -52,10 +51,6 @@ export function AccountPage() {
             <div>
               <dt className="eyebrow">{t('team.role')}</dt>
               <dd className="mt-1"><Badge tone="green">{t(`roles.${me.role}`)}</Badge></dd>
-            </div>
-            <div>
-              <dt className="eyebrow">{t('team.dailyTarget')}</dt>
-              <dd className="num mt-1">{formatHM(me.daily_target_minutes)}</dd>
             </div>
             <div className="col-span-2">
               <dt className="eyebrow mb-2">{t('common.language')}</dt>

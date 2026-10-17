@@ -6,14 +6,12 @@ import { toast } from 'sonner'
 import { indexById, useProfiles } from '@/api/reference'
 import { useCreateUser, useSetPassword, useUpdateUser } from '@/api/users'
 import { useMe } from '@/auth/AuthProvider'
-import { DurationInput } from '@/components/DurationInput'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Field'
 import { Avatar, Badge, EmptyState, PageHeader } from '@/components/ui/misc'
 import { Modal } from '@/components/ui/Modal'
 import { Spinner } from '@/components/ui/Spinner'
 import { errorKey } from '@/lib/errors'
-import { formatHM } from '@/lib/time'
 import { ROLES, type Profile, type Role } from '@/lib/types'
 import { Toolbar } from './ClientsPage'
 
@@ -73,7 +71,6 @@ export function TeamPage() {
                   <th>{t('team.fullName')}</th>
                   <th>{t('team.role')}</th>
                   <th>{t('team.manager')}</th>
-                  <th className="text-right">{t('team.dailyTarget')}</th>
                   <th>{t('team.status')}</th>
                   <th className="w-px" />
                 </tr>
@@ -95,7 +92,6 @@ export function TeamPage() {
                     </td>
                     <td><Badge tone={ROLE_TONE[p.role]}>{t(`roles.${p.role}`)}</Badge></td>
                     <td className="text-sm text-ink-2">{p.manager_id ? byId.get(p.manager_id)?.full_name ?? '—' : '—'}</td>
-                    <td className="num text-right text-ink-2">{formatHM(p.daily_target_minutes)}</td>
                     <td>{p.active ? <Badge tone="green">{t('common.active')}</Badge> : <Badge>{t('common.inactive')}</Badge>}</td>
                     <td>
                       <div className="flex justify-end gap-0.5">
@@ -146,21 +142,19 @@ function UserForm({ user, managers, onDone }: { user: Profile | null; managers: 
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<Role>(user?.role ?? 'collaborator')
   const [managerId, setManagerId] = useState(user?.manager_id ?? '')
-  const [target, setTarget] = useState<number | null>(user?.daily_target_minutes ?? 480)
   const [submitted, setSubmitted] = useState(false)
 
   const errors = {
     fullName: !fullName.trim() ? t('errors.required') : null,
     email: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ? t('errors.invalidEmail') : null,
     password: !user && password.length < 8 ? t('errors.weakPassword') : null,
-    target: target === null || target < 0 || target > 1440 ? t('errors.invalidDuration') : null,
   }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setSubmitted(true)
     if (Object.values(errors).some(Boolean)) return
-    const common = { full_name: fullName.trim(), role, manager_id: managerId || null, daily_target_minutes: target! }
+    const common = { full_name: fullName.trim(), role, manager_id: managerId || null }
     try {
       if (user) {
         await update.mutateAsync({ id: user.id, ...common, ...(email.trim().toLowerCase() !== user.email ? { email: email.trim() } : {}) })
@@ -208,19 +202,14 @@ function UserForm({ user, managers, onDone }: { user: Profile | null; managers: 
         </div>
       </fieldset>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('team.manager')} optional={t('common.optional')}>
+      <Field label={t('team.manager')} optional={t('common.optional')}>
           <Select value={managerId} onChange={(e) => setManagerId(e.target.value)}>
             <option value="">{t('team.noManager')}</option>
             {managers.map((m) => (
               <option key={m.id} value={m.id}>{m.full_name}</option>
             ))}
           </Select>
-        </Field>
-        <Field label={t('team.dailyTarget')} hint={t('team.dailyTargetHint')} error={submitted && errors.target}>
-          <DurationInput value={target} onChange={setTarget} presets={[0, 240, 420, 450, 480]} />
-        </Field>
-      </div>
+      </Field>
 
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="secondary" onClick={onDone}>{t('common.cancel')}</Button>

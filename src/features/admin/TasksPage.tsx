@@ -3,38 +3,38 @@ import { ClipboardList, Plus } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { indexById, useClients, useDeleteTask, useSaveTask, useTasks } from '@/api/reference'
+import { indexById, useCategories, useDeleteTask, useSaveTask, useTasks } from '@/api/reference'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { Badge, EmptyState, PageHeader } from '@/components/ui/misc'
 import { ConfirmModal, Modal } from '@/components/ui/Modal'
 import { Spinner } from '@/components/ui/Spinner'
 import { errorKey } from '@/lib/errors'
-import type { Client, Task } from '@/lib/types'
+import type { Category, Task } from '@/lib/types'
 import { RowActions, Toolbar } from './ClientsPage'
 
 export function TasksPage() {
   const { t } = useTranslation()
   const tasks = useTasks()
-  const clients = useClients()
+  const categories = useCategories()
   const save = useSaveTask()
   const del = useDeleteTask()
   const [query, setQuery] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const [editing, setEditing] = useState<Task | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Task | null>(null)
-  const clientById = useMemo(() => indexById(clients.data), [clients.data])
+  const categoryById = useMemo(() => indexById(categories.data), [categories.data])
 
   const q = query.trim().toLowerCase()
   const list = (tasks.data ?? []).filter(
     (x) =>
       (showArchived || x.active) &&
-      (!q || [x.name, x.description, x.client_id && clientById.get(x.client_id)?.name].some((v) => v && v.toLowerCase().includes(q))),
+      (!q || [x.name, x.description, categoryById.get(x.category_id)?.name].some((v) => v && v.toLowerCase().includes(q))),
   )
 
   async function toggleActive(x: Task) {
     try {
-      await save.mutateAsync({ id: x.id, name: x.name, client_id: x.client_id, active: !x.active })
+      await save.mutateAsync({ id: x.id, name: x.name, category_id: x.category_id, active: !x.active })
       toast.success(t('tasks.updated'))
     } catch (err) {
       toast.error(t(errorKey(err)))
@@ -79,7 +79,7 @@ export function TasksPage() {
               <thead>
                 <tr>
                   <th>{t('tasks.name')}</th>
-                  <th>{t('tasks.scope')}</th>
+                  <th>{t('tasks.category')}</th>
                   <th>{t('team.status')}</th>
                   <th className="w-px" />
                 </tr>
@@ -92,11 +92,7 @@ export function TasksPage() {
                       {x.description && <p className="text-xs text-ink-3">{x.description}</p>}
                     </td>
                     <td>
-                      {x.client_id ? (
-                        <Badge tone="brass">{clientById.get(x.client_id)?.name ?? t('common.unknown')}</Badge>
-                      ) : (
-                        <span className="text-sm text-ink-2">{t('tasks.allClients')}</span>
-                      )}
+                      <Badge tone="brass">{categoryById.get(x.category_id)?.name ?? t('common.unknown')}</Badge>
                     </td>
                     <td>{x.active ? <Badge tone="green">{t('common.active')}</Badge> : <Badge>{t('common.inactive')}</Badge>}</td>
                     <td>
@@ -115,7 +111,7 @@ export function TasksPage() {
           <TaskForm
             key={editing === 'new' ? 'new' : editing.id}
             task={editing === 'new' ? null : editing}
-            clients={(clients.data ?? []).filter((c) => c.active || (editing !== 'new' && c.id === editing.client_id))}
+            categories={(categories.data ?? []).filter((c) => c.active || (editing !== 'new' && c.id === editing.category_id))}
             onDone={() => setEditing(null)}
           />
         )}
@@ -131,20 +127,20 @@ export function TasksPage() {
   )
 }
 
-function TaskForm({ task, clients, onDone }: { task: Task | null; clients: Client[]; onDone: () => void }) {
+function TaskForm({ task, categories, onDone }: { task: Task | null; categories: Category[]; onDone: () => void }) {
   const { t } = useTranslation()
   const save = useSaveTask()
   const [name, setName] = useState(task?.name ?? '')
   const [description, setDescription] = useState(task?.description ?? '')
-  const [clientId, setClientId] = useState(task?.client_id ?? '')
+  const [categoryId, setCategoryId] = useState(task?.category_id ?? (categories.length === 1 ? categories[0].id : ''))
   const [submitted, setSubmitted] = useState(false)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setSubmitted(true)
-    if (!name.trim()) return
+    if (!name.trim() || !categoryId) return
     try {
-      await save.mutateAsync({ id: task?.id, name, description, client_id: clientId || null })
+      await save.mutateAsync({ id: task?.id, name, description, category_id: categoryId })
       toast.success(task ? t('tasks.updated') : t('tasks.created'))
       onDone()
     } catch (err) {
@@ -157,12 +153,16 @@ function TaskForm({ task, clients, onDone }: { task: Task | null; clients: Clien
       <Field label={t('tasks.name')} error={submitted && !name.trim() ? t('errors.required') : null}>
         <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={200} />
       </Field>
-      <Field label={t('tasks.scope')}>
-        <Select value={clientId} onChange={(e) => setClientId(e.target.value)}>
-          <option value="">{t('tasks.allClients')}</option>
-          {clients.map((c) => (
+      <Field
+        label={t('tasks.category')}
+        hint={categories.length === 0 ? t('tasks.noCategoriesYet') : undefined}
+        error={submitted && !categoryId ? t('errors.required') : null}
+      >
+        <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+          <option value="">{t('tasks.chooseCategory')}</option>
+          {categories.map((c) => (
             <option key={c.id} value={c.id}>
-              {t('tasks.onlyClient')} : {c.name}
+              {c.name}
             </option>
           ))}
         </Select>

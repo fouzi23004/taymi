@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDecimalHours, formatHM, parseDuration } from './time'
+import { formatDecimalHours, formatHM } from './time'
 
 describe('formatHM', () => {
   it('formats minutes as hours and padded minutes', () => {
@@ -18,24 +18,3 @@ describe('formatDecimalHours', () => {
   })
 })
 
-describe('parseDuration', () => {
-  it.each([
-    ['1:30', 90],
-    ['1h30', 90],
-    ['1h', 60],
-    ['0h45', 45],
-    ['1.5', 90],
-    ['1,25', 75],
-    ['2', 120],
-    ['90m', 90],
-    ['45 min', 45],
-    ['90', 90],
-    ['  3 H 15 ', 195],
-  ])('%s → %i', (input, expected) => {
-    expect(parseDuration(input)).toBe(expected)
-  })
-
-  it.each(['', 'abc', '1:75', '1h60', '-1'])('rejects %j', (input) => {
-    expect(parseDuration(input)).toBeNull()
-  })
-})

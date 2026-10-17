@@ -1,5 +1,5 @@
 [
-  { "email": "admin@timeledger.test", "full_name": "Hédi Admin", "role": "admin", "daily_target_minutes": 0 },
+  { "email": "admin@timeledger.test", "full_name": "Hédi Admin", "role": "admin" },
   { "email": "manager@timeledger.test", "full_name": "Sonia Manager", "role": "manager" },
   { "email": "amine@timeledger.test", "full_name": "Amine Bouaziz", "role": "collaborator", "manager": "manager@timeledger.test" },
   { "email": "ines@timeledger.test", "full_name": "Inès Karoui", "role": "collaborator", "manager": "manager@timeledger.test" },

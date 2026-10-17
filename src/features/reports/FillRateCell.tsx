@@ -1,8 +1,8 @@
 import { clsx } from 'clsx'
 import { Gauge } from '@/components/ui/misc'
 
-/** Logged ÷ expected time. ≥ 95 % reads as on target, < 70 % as a concern. */
-export function UtilizationCell({ value }: { value: number | null }) {
+/** Share of working days filled in. ≥ 95 % reads as fine, < 70 % as a concern. */
+export function FillRateCell({ value }: { value: number | null }) {
   if (value === null) return <span className="text-ink-3">—</span>
   const tone = value >= 0.95 ? 'green' : value >= 0.7 ? 'brass' : 'stamp'
   return (

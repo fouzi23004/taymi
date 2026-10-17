@@ -46,7 +46,7 @@ console.log(`Test account passwords: ${CREDENTIALS.pathname.replace(/^\/([A-Z]:)
 for (const u of users) {
   const { error } = await admin
     .from('profiles')
-    .update({ full_name: u.full_name, role: u.role, manager_id: u.manager ? ids[u.manager] : null, daily_target_minutes: u.daily_target_minutes ?? 480, active: true })
+    .update({ full_name: u.full_name, role: u.role, manager_id: u.manager ? ids[u.manager] : null, active: true })
     .eq('id', ids[u.email])
   if (error) throw error
 }
@@ -58,8 +58,15 @@ if (count) {
 }
 
 const { data: clients } = await admin.from('clients').select('id, reference')
-const { data: tasks } = await admin.from('tasks').select('id, client_id')
-const generic = tasks.filter((t) => !t.client_id)
+const { data: tasks } = await admin.from('tasks').select('id, category_id')
+const { data: links } = await admin.from('client_categories').select('client_id, category_id')
+const { data: exercises } = await admin.from('exercises').select('id, name')
+// Tasks allowed for each client (those of its categories).
+const tasksOf = (clientId) => {
+  const cats = new Set(links.filter((l) => l.client_id === clientId).map((l) => l.category_id))
+  return tasks.filter((t) => cats.has(t.category_id))
+}
+const exerciseOf = (date) => exercises.find((x) => x.name === date.slice(0, 4)) ?? exercises[0]
 
 // Deterministic pseudo-random so reruns after a reset look the same.
 let seed = 42
@@ -81,8 +88,16 @@ for (let back = 40; back >= 0; back--) {
     while (left > 0) {
       const minutes = Math.min(left, (2 + Math.floor(rand() * 10)) * 15)
       const client = pick(clients)
-      const task = client.reference === 'CLI-001' && rand() < 0.3 ? tasks.find((t) => t.client_id === client.id) : pick(generic)
-      entries.push({ user_id: ids[u.email], client_id: client.id, task_id: task.id, work_date, minutes, comment: pick(COMMENTS) })
+      const task = pick(tasksOf(client.id))
+      entries.push({
+        user_id: ids[u.email],
+        client_id: client.id,
+        task_id: task.id,
+        exercise_id: exerciseOf(work_date).id,
+        work_date,
+        minutes,
+        comment: pick(COMMENTS),
+      })
       left -= minutes
     }
   }

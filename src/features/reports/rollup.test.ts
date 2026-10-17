@@ -1,31 +1,34 @@
 import { describe, expect, it } from 'vitest'
-import type { Profile, RollupRow } from '@/lib/types'
+import type { Profile, Role, RollupRow } from '@/lib/types'
 import { dailySeries, filterRollup, groupRollup, performanceByUser, totalMinutes } from './rollup'
 
-const row = (work_date: string, user_id: string, client_id: string, task_id: string, minutes: number): RollupRow => ({
-  work_date,
-  user_id,
-  client_id,
-  task_id,
-  minutes,
-  entry_count: 1,
-})
+const row = (
+  work_date: string,
+  user_id: string,
+  client_id: string,
+  task_id: string,
+  minutes: number,
+  exercise_id = 'x2026',
+): RollupRow => ({ work_date, user_id, client_id, task_id, exercise_id, minutes, entry_count: 1 })
 
 // Mon 2026-10-12 … Fri 2026-10-16
 const rows: RollupRow[] = [
   row('2026-10-12', 'u1', 'c1', 't1', 240),
-  row('2026-10-12', 'u1', 'c2', 't1', 240),
+  row('2026-10-12', 'u1', 'c2', 't1', 240, 'x2025'),
   row('2026-10-13', 'u1', 'c1', 't2', 120),
   row('2026-10-12', 'u2', 'c1', 't1', 60),
 ]
+const taskCategories = new Map([
+  ['t1', 'compta'],
+  ['t2', 'fiscal'],
+])
 
-const profile = (id: string, target = 480): Profile => ({
+const profile = (id: string, role: Role = 'collaborator'): Profile => ({
   id,
   email: `${id}@x.test`,
   full_name: id,
-  role: 'collaborator',
+  role,
   manager_id: null,
-  daily_target_minutes: target,
   active: true,
   created_at: '',
   updated_at: '',
@@ -39,6 +42,20 @@ describe('groupRollup', () => {
     ])
   })
 
+  it('totals by category through the task', () => {
+    expect(groupRollup(rows, 'category', taskCategories).map((g) => [g.key, g.minutes])).toEqual([
+      ['compta', 540],
+      ['fiscal', 120],
+    ])
+  })
+
+  it('totals by exercise', () => {
+    expect(groupRollup(rows, 'exercise').map((g) => [g.key, g.minutes])).toEqual([
+      ['x2026', 420],
+      ['x2025', 240],
+    ])
+  })
+
   it('sorts days chronologically', () => {
     expect(groupRollup(rows, 'day').map((g) => g.key)).toEqual(['2026-10-12', '2026-10-13'])
   })
@@ -47,6 +64,11 @@ describe('groupRollup', () => {
 describe('filterRollup', () => {
   it('combines filters', () => {
     expect(totalMinutes(filterRollup(rows, { userId: 'u1', clientId: 'c1' }))).toBe(360)
+  })
+
+  it('filters by category and exercise', () => {
+    expect(totalMinutes(filterRollup(rows, { categoryId: 'compta' }, taskCategories))).toBe(540)
+    expect(totalMinutes(filterRollup(rows, { exerciseId: 'x2025' }))).toBe(240)
   })
 })
 
@@ -62,27 +84,22 @@ describe('dailySeries', () => {
 })
 
 describe('performanceByUser', () => {
-  it('compares logged time with the daily target up to today', () => {
-    const [u1, u2] = performanceByUser(
-      rows,
-      [profile('u1'), profile('u2', 240)],
-      { from: '2026-10-12', to: '2026-10-18' },
-      '2026-10-14',
-    )
+  it('counts filled and missing working days up to today', () => {
+    const [u1, u2] = performanceByUser(rows, [profile('u1'), profile('u2')], { from: '2026-10-12', to: '2026-10-18' }, '2026-10-14')
     expect(u1.profile.id).toBe('u1')
     expect(u1.minutes).toBe(600)
     expect(u1.workingDays).toBe(3)
-    expect(u1.expectedMinutes).toBe(1440)
     expect(u1.missingDays).toEqual(['2026-10-14'])
+    expect(u1.fillRate).toBeCloseTo(2 / 3)
     expect(u1.avgPerDay).toBe(300)
     expect(u1.clients).toBe(2)
-    expect(u2.utilization).toBeCloseTo(60 / 720)
+    expect(u2.missingDays).toEqual(['2026-10-13', '2026-10-14'])
   })
 
-  it('leaves out people with no daily target unless they logged time', () => {
-    const perf = performanceByUser(rows, [profile('u1', 0), profile('u9', 0)], { from: '2026-10-12', to: '2026-10-14' }, '2026-10-14')
+  it('lists admins only when they logged time, never with missing days', () => {
+    const perf = performanceByUser(rows, [profile('u1', 'admin'), profile('u9', 'admin')], { from: '2026-10-12', to: '2026-10-14' }, '2026-10-14')
     expect(perf.map((p) => p.profile.id)).toEqual(['u1'])
     expect(perf[0].missingDays).toEqual([])
-    expect(perf[0].utilization).toBeNull()
+    expect(perf[0].fillRate).toBeNull()
   })
 })

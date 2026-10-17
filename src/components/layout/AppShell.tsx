@@ -3,10 +3,12 @@ import {
   BarChart3,
   BookOpenCheck,
   Briefcase,
+  CalendarRange,
   ClipboardList,
   LayoutDashboard,
   LogOut,
   Menu,
+  Tags,
   UserRound,
   Users,
   X,
@@ -69,7 +71,9 @@ export function AppShell() {
       items: [
         { to: '/team', label: t('nav.team'), icon: <Users />, roles: ['admin'] },
         { to: '/clients', label: t('nav.clients'), icon: <Briefcase />, roles: ['admin', 'manager'] },
+        { to: '/categories', label: t('nav.categories'), icon: <Tags />, roles: ['admin', 'manager'] },
         { to: '/tasks', label: t('nav.tasks'), icon: <ClipboardList />, roles: ['admin', 'manager'] },
+        { to: '/exercises', label: t('nav.exercises'), icon: <CalendarRange />, roles: ['admin'] },
       ],
     },
   ]

@@ -1,10 +1,10 @@
 # TimeLedger
 
-Time tracking for service firms. At the end of each day every collaborator records what they did, client by client: **client → task → time spent → optional comment**. Managers then see:
+Time tracking for service firms. At the end of each day every collaborator records what they did, client by client: **client → exercise → task → hours and minutes → optional comment**. Managers then see:
 
 - **what each person did** on a given day or over any period,
 - **how much time each client took**, ready for invoicing (hours and decimal hours, CSV export),
-- **collaborator performance**: days filled in, time logged against their daily target, missing days.
+- **collaborator activity**: time logged, days filled in, missing days.
 
 The interface is bilingual (French by default, English), and the layout works on desktop and mobile.
 
@@ -14,14 +14,16 @@ The interface is bilingual (French by default, English), and the layout works on
 
 | Who | What |
 | --- | --- |
-| Collaborator | *Ma journée*: daily entry form, quick durations (`1h30`, `1,5`, `90m`…), week strip with daily totals, edit/delete own entries, personal reports |
-| Manager | Everything above, plus an overview dashboard and reports for **their team** (people whose manager they are); manages clients and tasks |
-| Admin | Everything, for **everyone**; manages the team (create accounts, roles, managers, daily targets, deactivate, reset passwords) |
+| Collaborator | *Ma journée*: daily entry form (hours and minutes boxes plus quick picks), week strip with daily totals, edit/delete own entries, personal reports |
+| Manager | Everything above, plus an overview dashboard and reports for **their team** (people whose manager they are); manages clients, categories and tasks |
+| Admin | Everything, for **everyone**; manages the team (create accounts, roles, managers, deactivate, reset passwords) and the exercises |
 
-- **Clients**: name, reference, contact, notes; archive instead of delete once used.
-- **Tasks**: a shared catalogue (e.g. *Saisie comptable*, *Déclaration TVA*). A task can also be restricted to one client.
-- **Reports** grouped by client, collaborator, task or day, with filters, a detail view and CSV export. French exports use `;` and a UTF-8 BOM so Excel opens them directly.
-- **Performance**: expected time = daily target × working days (Mon–Fri) up to today. A daily target of `0h00` means the person doesn't log time (for example an admin), so they're left out of these figures.
+- **Categories** group tasks (e.g. *Comptabilité*, *Fiscalité*, *Social*).
+- **Clients**: name, reference, contact, notes, and the **categories of work done for them**. The entry form only offers tasks from the client's categories, and the database enforces this. Archive clients instead of deleting them once used.
+- **Tasks**: a catalogue where each task belongs to one category (e.g. *Saisie comptable* in *Comptabilité*).
+- **Exercises**: one list shared by all clients (e.g. *2025*, *2026*). Every entry is attached to an exercise, and the form remembers the last one used.
+- **Reports** grouped by client, collaborator, category, task, exercise or day, with filters, a detail view and CSV export. French exports use `;` and a UTF-8 BOM so Excel opens them directly.
+- **Activity**: working days (Mon–Fri) up to today with and without entries, plus a fill rate. Admins are only counted once they log time.
 
 ## Stack
 
@@ -115,11 +117,15 @@ src/
 ### Data model
 
 ```
-profiles      id (= auth user) · full_name · email · role (admin|manager|collaborator)
-              · manager_id → profiles · daily_target_minutes · active
-clients       name · reference · contact_name · contact_email · notes · active
-tasks         name · description · client_id → clients (null = every client) · active
-time_entries  user_id → profiles · client_id · task_id · work_date · minutes · comment
+profiles           id (= auth user) · full_name · email · role (admin|manager|collaborator)
+                   · manager_id → profiles · active
+clients            name · reference · contact_name · contact_email · notes · active
+categories         name · description · active
+client_categories  client_id → clients · category_id → categories
+tasks              name · description · category_id → categories · active
+exercises          name ("2026") · active
+time_entries       user_id → profiles · client_id · exercise_id · task_id · work_date
+                   · minutes · comment
 ```
 
-Durations are stored as integer **minutes**. Reports read `report_rollup(from, to)`, which returns one row per *(day, collaborator, client, task)* with RLS applied. The app then rolls these rows up in whatever grouping the screen needs.
+Durations are stored as integer **minutes**. Reports read `report_rollup(from, to)`, which returns one row per *(day, collaborator, client, task, exercise)* with RLS applied. The app then rolls these rows up in whatever grouping the screen needs.

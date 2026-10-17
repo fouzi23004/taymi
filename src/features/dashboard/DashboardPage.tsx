@@ -10,9 +10,10 @@ import { rangeFromPreset, RangePicker, type RangeValue } from '@/components/Rang
 import { Avatar, EmptyState, Gauge, PageHeader, Stat } from '@/components/ui/misc'
 import { Spinner } from '@/components/ui/Spinner'
 import { todayISO } from '@/lib/dates'
+import { logsTime } from '@/lib/types'
 import { formatHM } from '@/lib/time'
 import { dailySeries, groupRollup, performanceByUser, totalMinutes } from '../reports/rollup'
-import { UtilizationCell } from '../reports/UtilizationCell'
+import { FillRateCell } from '../reports/FillRateCell'
 
 export function DashboardPage() {
   const { t, i18n } = useTranslation()
@@ -40,7 +41,7 @@ export function DashboardPage() {
   const fillRate = expectedDays ? filledDays / expectedDays : null
 
   const loggedToday = new Set((todayRollup.data ?? []).map((r) => r.user_id))
-  const missingToday = people.filter((p) => !loggedToday.has(p.id) && p.daily_target_minutes > 0)
+  const missingToday = people.filter((p) => logsTime(p) && !loggedToday.has(p.id))
 
   const loading = rollup.isPending || profiles.isPending || clients.isPending
 
@@ -141,7 +142,7 @@ export function DashboardPage() {
                       <th>{t('reports.byUser')}</th>
                       <th className="text-right">{t('reports.time')}</th>
                       <th className="text-right">{t('reports.workedDays')}</th>
-                      <th className="min-w-40">{t('reports.utilization')}</th>
+                      <th className="min-w-40">{t('reports.fillRate')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -158,7 +159,7 @@ export function DashboardPage() {
                           {p.daysWorked}/{p.workingDays}
                         </td>
                         <td>
-                          <UtilizationCell value={p.utilization} />
+                          <FillRateCell value={p.fillRate} />
                         </td>
                       </tr>
                     ))}

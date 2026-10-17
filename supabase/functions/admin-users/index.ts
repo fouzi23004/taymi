@@ -6,8 +6,8 @@
 // caller's session itself, which also works with asymmetric JWT signing keys.
 //
 // POST body (JSON):
-//   { action: "create", email, password, full_name, role, manager_id?, daily_target_minutes? }
-//   { action: "update", id, full_name?, role?, manager_id?, daily_target_minutes?, active?, email? }
+//   { action: "create", email, password, full_name, role, manager_id? }
+//   { action: "update", id, full_name?, role?, manager_id?, active?, email? }
 //   { action: "set_password", id, password }
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
@@ -83,14 +83,6 @@ function uuidOrNull(value: unknown, field: string): string | null | undefined {
   return value
 }
 
-function minutes(value: unknown): number | undefined {
-  if (value === undefined) return undefined
-  if (!Number.isInteger(value) || (value as number) < 0 || (value as number) > 1440) {
-    throw new HttpError(400, 'invalid_input', 'daily_target_minutes must be 0–1440')
-  }
-  return value as number
-}
-
 /** Translate Postgres / GoTrue errors into stable codes the UI can translate. */
 function fromDbError(error: { message?: string; code?: string; hint?: string }): HttpError {
   if (error.hint === 'last_admin') return new HttpError(409, 'last_admin')
@@ -124,7 +116,6 @@ async function createUser(admin: SupabaseClient, body: Record<string, unknown>) 
     full_name: str(body.full_name, 'full_name')!,
     role: role(body.role)!,
     manager_id: uuidOrNull(body.manager_id, 'manager_id') ?? null,
-    daily_target_minutes: minutes(body.daily_target_minutes) ?? 480,
   }
 
   const { data, error } = await admin.auth.admin.createUser({
@@ -142,7 +133,6 @@ async function createUser(admin: SupabaseClient, body: Record<string, unknown>) 
       full_name: input.full_name,
       role: input.role,
       manager_id: input.manager_id,
-      daily_target_minutes: input.daily_target_minutes,
       active: true, // profiles start inactive unless an admin created them
     })
     .eq('id', data.user.id)
@@ -167,8 +157,6 @@ async function updateUser(admin: SupabaseClient, callerId: string, body: Record<
   if (newRole !== undefined) patch.role = newRole
   const managerId = uuidOrNull(body.manager_id, 'manager_id')
   if (managerId !== undefined) patch.manager_id = managerId
-  const target = minutes(body.daily_target_minutes)
-  if (target !== undefined) patch.daily_target_minutes = target
   if (body.active !== undefined) {
     if (typeof body.active !== 'boolean') throw new HttpError(400, 'invalid_input', 'active must be boolean')
     if (!body.active && id === callerId) throw new HttpError(409, 'cannot_deactivate_self')

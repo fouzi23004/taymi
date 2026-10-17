@@ -13,7 +13,7 @@
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
-    "db:types": "supabase gen types typescript --local > src/lib/database.types.ts",
+    "db:types": "supabase gen types typescript --linked > src/lib/database.types.ts",
     "db:seed-dev": "node scripts/seed-dev.mjs",
     "db:check": "node scripts/check-rls.mjs && node scripts/check-admin-fn.mjs"
   },

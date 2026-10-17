@@ -29,6 +29,24 @@ export interface EntryFilters {
   userId?: string
   clientId?: string
   taskId?: string
+  exerciseId?: string
+  /** A category filter, resolved by the caller to the ids of its tasks. */
+  categoryTaskIds?: string[]
+}
+
+/** Entries of the period matching the report filters (not yet ordered or paged). */
+export function filteredEntries(range: DateRange, filters: EntryFilters, count?: 'exact') {
+  let q = supabase
+    .from('time_entries')
+    .select('*', { count })
+    .gte('work_date', range.from)
+    .lte('work_date', range.to)
+  if (filters.userId) q = q.eq('user_id', filters.userId)
+  if (filters.clientId) q = q.eq('client_id', filters.clientId)
+  if (filters.taskId) q = q.eq('task_id', filters.taskId)
+  if (filters.exerciseId) q = q.eq('exercise_id', filters.exerciseId)
+  if (filters.categoryTaskIds) q = q.in('task_id', filters.categoryTaskIds)
+  return q
 }
 
 /** Detailed entries for reports, one page at a time. */
@@ -37,15 +55,7 @@ export function useEntryDetails(range: DateRange, filters: EntryFilters, limit: 
     queryKey: [...keys.entries, 'details', range.from, range.to, filters, limit],
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      let q = supabase
-        .from('time_entries')
-        .select('*', { count: 'exact' })
-        .gte('work_date', range.from)
-        .lte('work_date', range.to)
-      if (filters.userId) q = q.eq('user_id', filters.userId)
-      if (filters.clientId) q = q.eq('client_id', filters.clientId)
-      if (filters.taskId) q = q.eq('task_id', filters.taskId)
-      const { data, count, error } = await q
+      const { data, count, error } = await filteredEntries(range, filters, 'exact')
         .order('work_date', { ascending: false })
         .order('created_at', { ascending: false })
         .order('id')
@@ -60,6 +70,7 @@ export interface EntryDraft {
   id?: string
   client_id: string
   task_id: string
+  exercise_id: string
   work_date: ISODate
   minutes: number
   comment: string | null

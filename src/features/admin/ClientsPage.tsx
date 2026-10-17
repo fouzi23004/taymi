@@ -3,19 +3,20 @@ import { Archive, ArchiveRestore, Briefcase, Pencil, Plus, Search, Trash2 } from
 import { useMemo, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { useClients, useDeleteClient, useSaveClient, useTasks } from '@/api/reference'
+import { categoriesByClient, indexById, useCategories, useClientCategories, useClients, useDeleteClient, useSaveClient } from '@/api/reference'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Field, Input, Textarea } from '@/components/ui/Field'
 import { Badge, EmptyState, PageHeader } from '@/components/ui/misc'
 import { ConfirmModal, Modal } from '@/components/ui/Modal'
 import { Spinner } from '@/components/ui/Spinner'
 import { errorKey } from '@/lib/errors'
-import type { Client } from '@/lib/types'
+import type { Category, Client } from '@/lib/types'
 
 export function ClientsPage() {
   const { t } = useTranslation()
   const clients = useClients()
-  const tasks = useTasks()
+  const categories = useCategories()
+  const clientCategories = useClientCategories()
   const save = useSaveClient()
   const del = useDeleteClient()
   const [query, setQuery] = useState('')
@@ -23,11 +24,8 @@ export function ClientsPage() {
   const [editing, setEditing] = useState<Client | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Client | null>(null)
 
-  const specificCount = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const x of tasks.data ?? []) if (x.client_id) m.set(x.client_id, (m.get(x.client_id) ?? 0) + 1)
-    return m
-  }, [tasks.data])
+  const categoryById = useMemo(() => indexById(categories.data), [categories.data])
+  const byClient = useMemo(() => categoriesByClient(clientCategories.data), [clientCategories.data])
 
   const q = query.trim().toLowerCase()
   const list = (clients.data ?? []).filter(
@@ -84,6 +82,7 @@ export function ClientsPage() {
                 <tr>
                   <th>{t('clients.name')}</th>
                   <th>{t('clients.reference')}</th>
+                  <th>{t('clients.categories')}</th>
                   <th>{t('clients.contactName')}</th>
                   <th>{t('team.status')}</th>
                   <th className="w-px" />
@@ -94,13 +93,20 @@ export function ClientsPage() {
                   <tr key={c.id} className={clsx(!c.active && 'opacity-60')}>
                     <td>
                       <p className="font-medium">{c.name}</p>
-                      {specificCount.get(c.id) ? (
-                        <p className="text-xs text-ink-3">
-                          {specificCount.get(c.id)} {t('clients.specificTasks')}
-                        </p>
-                      ) : null}
                     </td>
                     <td className="num text-xs text-ink-2">{c.reference ?? '—'}</td>
+                    <td>
+                      <div className="flex max-w-72 flex-wrap gap-1">
+                        {[...(byClient.get(c.id) ?? [])]
+                          .map((id) => categoryById.get(id))
+                          .filter((x): x is Category => Boolean(x))
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((cat) => (
+                            <Badge key={cat.id} tone="brass">{cat.name}</Badge>
+                          ))}
+                        {!byClient.get(c.id)?.size && <span className="text-xs text-stamp">{t('clients.noCategories')}</span>}
+                      </div>
+                    </td>
                     <td className="text-sm">
                       <p>{c.contact_name ?? '—'}</p>
                       {c.contact_email && <p className="text-xs text-ink-3">{c.contact_email}</p>}
@@ -122,7 +128,12 @@ export function ClientsPage() {
         )}
       </section>
 
-      <ClientModal client={editing} onClose={() => setEditing(null)} />
+      <ClientModal
+        client={editing}
+        categories={categories.data ?? []}
+        assigned={editing && editing !== 'new' ? byClient.get(editing.id) : undefined}
+        onClose={() => setEditing(null)}
+      />
       <ConfirmModal
         open={Boolean(deleting)}
         message={<><strong className="text-ink">{deleting?.name}</strong> — {t('common.confirmDelete')}</>}
@@ -187,19 +198,46 @@ export function RowActions({
   )
 }
 
-function ClientModal({ client, onClose }: { client: Client | 'new' | null; onClose: () => void }) {
+function ClientModal({
+  client,
+  categories,
+  assigned,
+  onClose,
+}: {
+  client: Client | 'new' | null
+  categories: Category[]
+  assigned: Set<string> | undefined
+  onClose: () => void
+}) {
   const { t } = useTranslation()
   const existing = client && client !== 'new' ? client : null
   return (
     <Modal open={client !== null} onClose={onClose} title={existing ? t('clients.edit') : t('clients.add')}>
-      {client !== null && <ClientForm key={existing?.id ?? 'new'} client={existing} onDone={onClose} />}
+      {client !== null && (
+        <ClientForm key={existing?.id ?? 'new'} client={existing} categories={categories} assigned={assigned} onDone={onClose} />
+      )}
     </Modal>
   )
 }
 
-function ClientForm({ client, onDone }: { client: Client | null; onDone: () => void }) {
+function ClientForm({
+  client,
+  categories,
+  assigned,
+  onDone,
+}: {
+  client: Client | null
+  categories: Category[]
+  assigned: Set<string> | undefined
+  onDone: () => void
+}) {
   const { t } = useTranslation()
   const save = useSaveClient()
+  const [categoryIds, setCategoryIds] = useState<string[]>(() => [...(assigned ?? [])])
+  // Archived categories stay visible if the client still has them.
+  const options = categories.filter((c) => c.active || categoryIds.includes(c.id))
+  const toggle = (id: string) =>
+    setCategoryIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))
   const [form, setForm] = useState({
     name: client?.name ?? '',
     reference: client?.reference ?? '',
@@ -216,7 +254,7 @@ function ClientForm({ client, onDone }: { client: Client | null; onDone: () => v
     setSubmitted(true)
     if (!form.name.trim()) return
     try {
-      await save.mutateAsync({ id: client?.id, ...form })
+      await save.mutateAsync({ id: client?.id, ...form, categoryIds })
       toast.success(client ? t('clients.updated') : t('clients.created'))
       onDone()
     } catch (err) {
@@ -242,6 +280,28 @@ function ClientForm({ client, onDone }: { client: Client | null; onDone: () => v
           <Input type="email" value={form.contact_email} onChange={set('contact_email')} />
         </Field>
       </div>
+      <fieldset>
+        <legend className="mb-1 text-[13px] font-medium text-ink-2">{t('clients.categories')}</legend>
+        <p className="mb-2 text-xs text-ink-3">{t('clients.categoriesHint')}</p>
+        {options.length === 0 ? (
+          <p className="rounded-lg bg-brass-soft p-3 text-sm text-[#7a5410]">{t('clients.noCategoriesYet')}</p>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {options.map((c) => (
+              <label
+                key={c.id}
+                className={clsx(
+                  'flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition',
+                  categoryIds.includes(c.id) ? 'border-ledger bg-ledger-soft' : 'border-rule-2 hover:border-ink-3',
+                )}
+              >
+                <input type="checkbox" className="size-4 accent-ledger" checked={categoryIds.includes(c.id)} onChange={() => toggle(c.id)} />
+                {c.name}
+              </label>
+            ))}
+          </div>
+        )}
+      </fieldset>
       <Field label={t('clients.notes')} optional={t('common.optional')}>
         <Textarea rows={3} value={form.notes} onChange={set('notes')} />
       </Field>

@@ -6,10 +6,10 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { useDeleteEntry, useMyEntries } from '@/api/entries'
-import { indexById, useClients, useTasks } from '@/api/reference'
+import { categoriesByClient, indexById, useCategories, useClientCategories, useClients, useExercises, useTasks } from '@/api/reference'
 import { useMe } from '@/auth/AuthProvider'
 import { Button, IconButton } from '@/components/ui/Button'
-import { Badge, EmptyState, Gauge, PageHeader } from '@/components/ui/misc'
+import { Badge, EmptyState, PageHeader } from '@/components/ui/misc'
 import { ConfirmModal } from '@/components/ui/Modal'
 import { Spinner } from '@/components/ui/Spinner'
 import { daysInRange, formatDate, fromISODate, shiftISODate, todayISO, toISODate, type ISODate } from '@/lib/dates'
@@ -42,6 +42,9 @@ export function TimesheetPage() {
 
   const clients = useClients()
   const tasks = useTasks()
+  const categories = useCategories()
+  const clientCategories = useClientCategories()
+  const exercises = useExercises()
   const entries = useMyEntries(me.id, week)
   const del = useDeleteEntry()
   const [editing, setEditing] = useState<TimeEntry | null>(null)
@@ -55,7 +58,6 @@ export function TimesheetPage() {
   const weekEntries = useMemo(() => entries.data ?? [], [entries.data])
   const dayEntries = weekEntries.filter((e) => e.work_date === date)
   const dayTotal = dayEntries.reduce((s, e) => s + e.minutes, 0)
-  const target = me.daily_target_minutes
   const totalsByDay = useMemo(() => {
     const m = new Map<string, number>()
     for (const e of weekEntries) m.set(e.work_date, (m.get(e.work_date) ?? 0) + e.minutes)
@@ -63,7 +65,10 @@ export function TimesheetPage() {
   }, [weekEntries])
   const weekTotal = weekEntries.reduce((s, e) => s + e.minutes, 0)
 
-  const loadingRefs = clients.isPending || tasks.isPending
+  const loadingRefs =
+    clients.isPending || tasks.isPending || categories.isPending || clientCategories.isPending || exercises.isPending
+  const categoriesOfClient = useMemo(() => categoriesByClient(clientCategories.data), [clientCategories.data])
+  const exerciseById = useMemo(() => indexById(exercises.data), [exercises.data])
   const noClients = !loadingRefs && !(clients.data ?? []).some((c) => c.active)
 
   async function confirmDelete() {
@@ -137,14 +142,6 @@ export function TimesheetPage() {
               <span className={clsx('num mt-1 text-xs', total ? (selected ? 'text-paper' : 'text-ink-2') : selected ? 'text-paper/40' : 'text-ink-3/60')}>
                 {total ? formatHM(total) : '—'}
               </span>
-              {!weekend && (
-                <span className={clsx('mt-1.5 h-1 w-full overflow-hidden rounded-full', selected ? 'bg-white/15' : 'bg-paper-2')}>
-                  <span
-                    className={clsx('block h-full rounded-full', selected ? 'bg-[#e3c486]' : total >= target ? 'bg-ledger-2' : 'bg-brass')}
-                    style={{ width: `${Math.min(1, target ? total / target : 0) * 100}%` }}
-                  />
-                </span>
-              )}
             </button>
           )
         })}
@@ -166,6 +163,9 @@ export function TimesheetPage() {
               key={`${date}-${editing?.id ?? 'new'}-${formNonce}`}
               date={date}
               clients={clients.data ?? []}
+              categories={categories.data ?? []}
+              clientCategories={categoriesOfClient}
+              exercises={exercises.data ?? []}
               tasks={tasks.data ?? []}
               entry={editing}
               onDone={() => {
@@ -205,7 +205,10 @@ export function TimesheetPage() {
                     style={{ animationDelay: `${i * 40}ms` }}
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-ink">{client?.name ?? t('common.unknown')}</p>
+                      <p className="flex items-center gap-2">
+                        <span className="truncate font-medium text-ink">{client?.name ?? t('common.unknown')}</span>
+                        <Badge className="num">{exerciseById.get(e.exercise_id)?.name ?? '—'}</Badge>
+                      </p>
                       <p className="mt-0.5 text-sm text-ink-2">{task?.name ?? t('common.unknown')}</p>
                       {e.comment && <p className="mt-2 border-l-2 border-rule-2 pl-3 text-sm whitespace-pre-line text-ink-3 italic">{e.comment}</p>}
                     </div>
@@ -230,22 +233,10 @@ export function TimesheetPage() {
               </div>
               <div className="text-right text-sm">
                 <p className="text-ink-3">
-                  {t('timesheet.target')} <span className="num text-ink-2">{formatHM(target)}</span>
-                  {' · '}
                   {t('timesheet.week')} <span className="num text-ink-2">{formatHM(weekTotal)}</span>
                 </p>
-                {target > 0 && (
-                  <p className={clsx('mt-1 font-medium', dayTotal >= target ? 'text-ledger' : 'text-[#7a5410]')}>
-                    {dayTotal > target
-                      ? t('timesheet.over', { value: formatHM(dayTotal - target) })
-                      : dayTotal === target
-                        ? '✓'
-                        : t('timesheet.remaining', { value: formatHM(target - dayTotal) })}
-                  </p>
-                )}
               </div>
             </div>
-            {target > 0 && <Gauge className="mt-4" value={dayTotal / target} tone={dayTotal >= target ? 'green' : 'brass'} />}
           </footer>
         </section>
       </div>

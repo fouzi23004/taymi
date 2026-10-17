@@ -11,7 +11,6 @@ export interface NewUser {
   full_name: string
   role: Role
   manager_id: string | null
-  daily_target_minutes: number
 }
 
 export interface UserPatch {
@@ -20,7 +19,6 @@ export interface UserPatch {
   full_name?: string
   role?: Role
   manager_id?: string | null
-  daily_target_minutes?: number
   active?: boolean
 }
 

@@ -25,8 +25,8 @@ const pw1 = `Tmp-${randomBytes(6).toString('base64url')}`
 const pw2 = `Tmp-${randomBytes(6).toString('base64url')}`
 
 console.log('collab creates user ->', (await call(collab, { action: 'create', email, password: pw1, full_name: 'X', role: 'collaborator' })).err)
-const created = await call(admin, { action: 'create', email, password: pw1, full_name: 'Temp User', role: 'collaborator', daily_target_minutes: 420 })
-console.log('admin creates user ->', created.ok?.profile?.role, created.ok?.profile?.daily_target_minutes, 'active:', created.ok?.profile?.active, created.err ?? '')
+const created = await call(admin, { action: 'create', email, password: pw1, full_name: 'Temp User', role: 'collaborator' })
+console.log('admin creates user ->', created.ok?.profile?.role, 'active:', created.ok?.profile?.active, created.err ?? '')
 console.log('duplicate email ->', (await call(admin, { action: 'create', email, password: pw1, full_name: 'Dup', role: 'collaborator' })).err)
 console.log('weak password ->', (await call(admin, { action: 'create', email: 'w' + email, password: 'short', full_name: 'W', role: 'collaborator' })).err)
 const id = created.ok.profile.id

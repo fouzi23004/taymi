@@ -25,12 +25,16 @@ export const router = createBrowserRouter([
             children: [
               { path: 'dashboard', lazy: () => import('@/features/dashboard/DashboardPage').then((m) => ({ Component: m.DashboardPage })) },
               { path: 'clients', lazy: () => import('@/features/admin/ClientsPage').then((m) => ({ Component: m.ClientsPage })) },
+              { path: 'categories', lazy: () => import('@/features/admin/CategoriesPage').then((m) => ({ Component: m.CategoriesPage })) },
               { path: 'tasks', lazy: () => import('@/features/admin/TasksPage').then((m) => ({ Component: m.TasksPage })) },
             ],
           },
           {
             Component: AdminOnly,
-            children: [{ path: 'team', lazy: () => import('@/features/admin/TeamPage').then((m) => ({ Component: m.TeamPage })) }],
+            children: [
+              { path: 'team', lazy: () => import('@/features/admin/TeamPage').then((m) => ({ Component: m.TeamPage })) },
+              { path: 'exercises', lazy: () => import('@/features/admin/ExercisesPage').then((m) => ({ Component: m.ExercisesPage })) },
+            ],
           },
           { path: '*', Component: NotFound },
         ],
