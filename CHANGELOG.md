@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-21
+
+- Maintenance day, no app changes. Typecheck, lint, tests (11) and build all pass, and the live GitHub Pages site responds.
+- `CLAUDE.md` now gives the correct Serena project name (`dad'sproject`).
+- Collected ideas for the next feature, none chosen yet (tax deadline calendar per client, planned vs. actual hours, client profitability, and others).
+
 ## 2026-10-17 (v0.2.0)
 
 - Task categories: tasks now belong to a category, and each client lists the categories of work done for it. The entry form only offers matching tasks, and the database enforces this.
